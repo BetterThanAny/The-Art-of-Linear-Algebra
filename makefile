@@ -5,6 +5,8 @@ ART=The-Art-of-Linear-Algebra
 ILLUST=Illustrations
 WORLD=MatrixWorld
 MAP=MapofEigenvalues
+FIGS_EPS=$(wildcard figs/*.eps)
+FIGS_PNG=$(wildcard figs/*.png)
 
 # PS->EPS options and page cutter from PostScript from PowerPoint.
 PSSELECT=psselect
@@ -14,8 +16,8 @@ PS2EPS=ps2eps -B -l -f
 # horizontal
 #PS2EPS=ps2eps -B -l -f -R=-
 
-# the two product target files. "-j" means Japaense version.
-all: $(ART).pdf $(ART)-j.pdf
+# the product target files. "-j" means Japaense version.
+all: $(ART).pdf $(ART)-j.pdf $(ART)-zh-CN.pdf
 
 # printout of all the pages of PowerPoint to PostScript
 $(ILLUST).ps: $(ILLUST).pptx
@@ -75,12 +77,32 @@ out/$(ART)-j.dvi: $(ART)-j.tex epsj-updated.touch
 	uplatex -synctex=1 -halt-on-error -file-line-error -output-directory=out $(ART)-j.tex
 	uplatex -synctex=1 -halt-on-error -file-line-error -output-directory=out $(ART)-j.tex
 
+out/$(ART)-zh-CN.dvi: $(ART)-zh-CN.tex $(FIGS_EPS) $(FIGS_PNG)
+	uplatex -synctex=1 -halt-on-error -file-line-error -output-directory=out $(ART)-zh-CN.tex
+	uplatex -synctex=1 -halt-on-error -file-line-error -output-directory=out $(ART)-zh-CN.tex
+
 out/figs-catalog.dvi: figs-catalog.tex figs/epsinclude.tex
 	uplatex -synctex=1 -halt-on-error -file-line-error -output-directory=out $<
 
 .PHONY: figs/epsinclude.tex
 figs/epsinclude.tex:
-	cd figs; ls illust*.eps | grep -v 'japp' | grep -v -- '-j.eps' | sed -e 's/.*/\\includegraphics{&}\\\\&\\\\\n\n/' | sed 's/_/\\_/g' > epsinclude.tex
+	@tmp=$@.tmp; \
+	: > $$tmp; \
+	found=0; \
+	for f in figs/*.eps; do \
+		if [ ! -e "$$f" ]; then \
+			continue; \
+		fi; \
+		found=1; \
+		name=$${f#figs/}; \
+		escaped=$$(printf '%s' "$$name" | sed 's/_/\\_/g'); \
+		printf '\\includegraphics{%s}\\\\%s\\\\\n\n\n' "$$name" "$$escaped" >> $$tmp; \
+	done; \
+	if [ $$found -eq 0 ]; then \
+		echo '% No EPS files found in figs.' > $$tmp; \
+		echo 'No EPS files found in figs; generated an empty figure catalog.' >&2; \
+	fi; \
+	mv $$tmp $@
 # note: for the options
 # uplatex -synctex=1 -halt-on-error -silent -file-line-error -output-directory=out $<
 # see https://qiita.com/rainbartown/items/d7718f12d71e688f3573#comment-7c2f42254e84b43d3175
@@ -133,4 +155,3 @@ clean:
 # EPSJ=$(EPS:%.eps=%-j.eps)
 # $(EPS): eps-updated.touch
 # $(EPSJ):  epsj-updated.touch
-
